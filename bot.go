@@ -158,13 +158,25 @@ func (bot Bot) Poll() {
 					updates[0].Message.Chat.Id)
 
 			} else if rand.Intn(100) <= bot.Chance {
+				chat := updates[len(updates)-1].Message.Chat.Id
 				in_text := updates[len(updates)-1].Message.Text
 				parts := strings.Split(in_text, " ")
 				seed := parts[0] // Seed the chain with the first word only
 
-				chat := updates[len(updates)-1].Message.Chat.Id
-				out_text := markov.Generate(seed, bot.Connection)
-				bot.Say(out_text, chat)
+				// How many times should we attempt to generate a message?
+				var attempts = 10
+				var done = false
+
+				for !done && attempts > 0 {
+					out_text := markov.Generate(seed, bot.Connection)
+					if (out_text == in_text + " ") {
+						// We would end up repeating the original message, so discard it instead.
+						attempts--;
+					} else {
+						bot.Say(out_text, chat)
+						done = true;
+					}
+				}
 			}
 
 		}
