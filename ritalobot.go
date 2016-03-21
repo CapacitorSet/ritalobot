@@ -11,18 +11,20 @@ import (
 )
 
 var (
-	port       int
-	token      string
-	connection string
-	configPath string
-	chance     int
+	name		string
+	port		int
+	token 		string
+	connection	string
+	configPath	string
+	chance		int
 )
 
 type Config struct {
-	Token      string `yaml:"token"`
-	Chance     int    `yaml: "chance"`
-	Connection string `yaml:"connection"`
-	Port       int    `yaml:"port"`
+	Token		string	`yaml:"token"`
+	Chance		int		`yaml:"chance"`
+	Connection	string	`yaml:"connection"`
+	Name		string	`yaml:"name"`
+	Port		int		`yaml:"port"`
 }
 
 func printLogo() {
@@ -52,6 +54,7 @@ func readConfig(configPath string) int {
 	chance = c.Chance
 	connection = c.Connection
 	port = c.Port
+	name = c.Name
 	return 0
 }
 

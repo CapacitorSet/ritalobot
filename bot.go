@@ -38,16 +38,26 @@ func sendCommand(method, token string, params url.Values) ([]byte, error) {
 	return json, nil
 }
 
-func (bot *Bot) Commands(command string, chat int) {
+func (bot *Bot) Commands(input string, chat int) {
 	markov := Markov{20}
-	word := strings.Split(command, " ")
+	word := strings.Split(input, " ")
 
 	seed := strings.Join(word[1:], " ") // Removes the initial command
 
-	if word[0] == "/chobot" && len(word) >= 2 {
+	commandParts := strings.Split(word[0], "@")
+	var command = commandParts[0]
+
+	if len(commandParts) > 1 {
+		var botName = commandParts[1]
+		if (botName != name) { // Bail out if the command was directed at another bot
+			return
+		}
+	}
+
+	if command == "/chobot" && len(word) >= 2 {
 		text := markov.Generate(seed, bot.Connection)
 		bot.Say(text, chat)
-	} else if word[0] == "/chosource" {
+	} else if command == "/chosource" {
 		text := fmt.Sprintf("Author: %v \nSource: %v",
 			"@blackdev1l",
 			"https://github.com/blackdev1l/ritalobot")
