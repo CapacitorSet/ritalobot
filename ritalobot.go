@@ -62,6 +62,7 @@ func main() {
 
 	printLogo()
 
+	flag.StringVar(&name, "name", "", "Telegram username of the bot")
 	flag.StringVar(&token, "token", "", "authentication token for the telegram bot")
 	flag.StringVar(&connection, "conn", "tcp", "type of connection and/or ip of redis database")
 	flag.IntVar(&port, "p", 6379, "port number of redis database")

@@ -13,6 +13,7 @@ Usage
 #### flags
 ```
 flag | default | help
+-name="": Telegram username of the bot
 -c="./config.yml": path for ritalobot config
 -conn="tcp": type of connection and/or ip of redis database
 -p=6379: port number of redis database
