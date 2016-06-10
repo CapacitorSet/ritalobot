@@ -167,9 +167,7 @@ func (bot Bot) Poll() {
 					updates[0].Message.Chat.Id)
 
 			} else if rand.Intn(100) <= bot.Chance {
-				in_text := updates[len(updates)-1].Message.Text
-				parts := strings.Split(in_text, " ")
-				seed := parts[0] // Seed the chain with the first word only
+				seed, _ := redis.String(bot.Connection.Do("RANDOMKEY"))
 
 				chat := updates[len(updates)-1].Message.Chat.Id
 				out_text := markov.Generate(seed, bot.Connection)
