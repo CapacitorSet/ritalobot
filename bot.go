@@ -97,15 +97,15 @@ func (bot Bot) GetUpdates() []Result {
 		log.Println(err)
 	}
 
-	var updatesRecieved Response
-	json.Unmarshal(resp, &updatesRecieved)
+	var updatesReceived Response
+	json.Unmarshal(resp, &updatesReceived)
 
-	if !updatesRecieved.Ok {
-		err = fmt.Errorf("chobot: %s\n", updatesRecieved.Description)
+	if !updatesReceived.Ok {
+		err = fmt.Errorf("chobot: %s\n", updatesReceived.Description)
 		return nil
 	}
 
-	var updates = updatesRecieved.Result
+	var updates = updatesReceived.Result
 	if len(updates) != 0 {
 
 		updateID := updates[len(updates)-1].Update_id + 1
@@ -126,7 +126,7 @@ func (bot Bot) Say(text string, chat int) (bool, error) {
 		return true, nil
 	}
 
-	var responseRecieved struct {
+	var responseReceived struct {
 		Ok          bool
 		Description string
 	}
@@ -137,16 +137,16 @@ func (bot Bot) Say(text string, chat int) (bool, error) {
 	params.Set("text", text)
 	resp, err := sendCommand("sendMessage", token, params)
 
-	err = json.Unmarshal(resp, &responseRecieved)
+	err = json.Unmarshal(resp, &responseReceived)
 	if err != nil {
 		return false, err
 	}
 
-	if !responseRecieved.Ok {
-		return false, fmt.Errorf("chobot: %s\n", responseRecieved.Description)
+	if !responseReceived.Ok {
+		return false, fmt.Errorf("chobot: %s\n", responseReceived.Description)
 	}
 
-	return responseRecieved.Ok, nil
+	return responseReceived.Ok, nil
 }
 
 func (bot Bot) Listen() {
