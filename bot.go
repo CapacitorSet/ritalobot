@@ -60,8 +60,7 @@ func (bot *Bot) Commands(input string, author string) string {
 		} else {
 			seed = strings.Join(word[1:], " ") // Removes the initial command
 		}
-		text := markov.Generate(seed, bot.Connection)
-		return text
+		return markov.Generate(seed, bot.Connection)
 	} else if word[0] == "/chorate" && len(word) >= 2 && author == admin {
 		n, err := strconv.Atoi(word[1])
 		if err != nil || n < 0 || n > 100 {
@@ -154,12 +153,13 @@ func (bot Bot) Poll() {
 				markov.StoreUpdate(text, bot.Connection)
 				response := process(text, isInline(update), author, markov, bot)
 
-				if response == "" { return }
-				if update.Message.Text != "" {
-					limiter.Wait()
-					bot.Say(response, update.Message.Chat.Id)
-				} else {
-					bot.SayInline(response, update.Inline.Id)
+				if response != "" {
+					if update.Message.Text != "" {
+						limiter.Wait()
+						bot.Say(response, update.Message.Chat.Id)
+					} else {
+						bot.SayInline(response, update.Inline.Id)
+					}
 				}
 			}
 		}
@@ -189,7 +189,7 @@ func fetchAuthor(item Result) User {
 func process(text string, inline bool, author User, markov Markov, bot Bot) string {
 	if strings.HasPrefix(text, "/cho") {
 		return bot.Commands(text, author.Username)
-	} else if rand.Intn(100) <= bot.Chance {
+	} else if inline || (rand.Intn(100) <= bot.Chance) {
 		var seed string
 		if (inline) {
 			seed = text
@@ -203,9 +203,9 @@ func process(text string, inline bool, author User, markov Markov, bot Bot) stri
 	}
 }
 
-func (bot Bot) Say(text string, chat int) (bool, error) {
+func (bot Bot) Say(text string, chat int) bool {
 	if strings.HasPrefix(text, "!kickme") || strings.HasPrefix(text, "/AttivaTelegramPremium") {
-		return true, nil
+		return true
 	}
 
 	var responseReceived struct {
@@ -221,14 +221,15 @@ func (bot Bot) Say(text string, chat int) (bool, error) {
 
 	err = json.Unmarshal(resp, &responseReceived)
 	if err != nil {
-		return false, err
+		return false
 	}
 
 	if !responseReceived.Ok {
-		return false, fmt.Errorf("chobot: %s\n", responseReceived.Description)
+		return false
+		// fmt.Errorf("chobot: %s\n", responseReceived.Description)
 	}
 
-	return responseReceived.Ok, nil
+	return responseReceived.Ok
 }
 
 func (bot Bot) SayInline(text string, id string) {
