@@ -95,34 +95,31 @@ func (bot Bot) GetUpdates() []Result {
 	resp, err := sendCommand("getUpdates", token, params)
 	if err != nil {
 		log.Println(err)
+		return nil
 	}
 
 	var updatesReceived Response
 	json.Unmarshal(resp, &updatesReceived)
 
 	if !updatesReceived.Ok {
-		err = fmt.Errorf("chobot: %s\n", updatesReceived.Description)
+		log.Println("updatesReceived not OK")
+		log.Println(updatesReceived.Description)
 		return nil
 	}
 
-	var updates = updatesReceived.Result
-	if len(updates) != 0 {
+	updates := updatesReceived.Result
 
+	if len(updates) != 0 {
 		updateID := updates[len(updates)-1].Update_id + 1
 		bot.Connection.Do("SET", "update_id", updateID)
-
-		return updates
-
 	}
-	return nil
+
+	return updates
 }
 
 func (bot Bot) Say(text string, chat int) (bool, error) {
 
-	if (strings.HasPrefix(text, "!kickme")) {
-		return true, nil
-	}
-	if (strings.HasPrefix(text, "/AttivaTelegramPremium")) {
+	if strings.HasPrefix(text, "!kickme") || strings.HasPrefix(text, "/AttivaTelegramPremium") {
 		return true, nil
 	}
 
