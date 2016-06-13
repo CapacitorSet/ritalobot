@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/garyburd/redigo/redis"
+	"github.com/alexurquhart/rlimit"
 	"io/ioutil"
 	"log"
 	"math/rand"
@@ -169,24 +170,49 @@ func (bot Bot) Listen() {
 
 func (bot Bot) Poll() {
 	markov := Markov{10}
+
+	// https://github.com/alexurquhart/rlimit/blob/master/examples/blocking/blocking.go
+	// Create a new limiter that ticks every 200ms, limited to 25 times per minute
+	interval := time.Duration(200) * time.Millisecond
+	resetInterval := time.Duration(1) * time.Minute
+	limiter := rlimit.NewRateLimiter(interval, 25, resetInterval)
+
 	for {
 		updates := bot.GetUpdates()
+
 		if updates != nil {
 			markov.StoreUpdates(updates, bot.Connection)
-			if strings.HasPrefix(updates[0].Message.Text, "/cho") {
-				bot.Commands(
-					updates[0].Message.Text,
-					updates[0].Message.Chat.Id,
-					updates[0].Message.From.Username)
-
-			} else if rand.Intn(100) <= bot.Chance {
-				seed, _ := redis.String(bot.Connection.Do("RANDOMKEY"))
-
-				chat := updates[len(updates)-1].Message.Chat.Id
-				out_text := markov.Generate(seed, bot.Connection)
-				bot.Say(out_text, chat)
+			for _, update := range updates {
+				if processable(update.Message, bot.Chance) {
+					limiter.Wait()
+					process(update.Message, markov, bot)
+				}
 			}
-
 		}
 	}
+}
+
+func process(message Message, markov Markov, bot Bot) {
+	if strings.HasPrefix(message.Text, "/cho") {
+		bot.Commands(
+			message.Text,
+			message.Chat.Id,
+			message.From.Username)
+	} else if rand.Intn(100) <= bot.Chance {
+		seed, _ := redis.String(bot.Connection.Do("RANDOMKEY"))
+
+		chat := message.Chat.Id
+		out_text := markov.Generate(seed, bot.Connection)
+		bot.Say(out_text, chat)
+	}
+}
+
+func processable(message Message, chance int) bool {
+	if strings.HasPrefix(message.Text, "/cho") {
+		return true;
+	}
+	if chance > 0 && rand.Intn(100) <= chance {
+		return true;
+	}
+	return false;
 }
