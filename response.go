@@ -7,18 +7,25 @@ type Response struct {
 }
 
 type Result struct {
-	Update_id int     `json:"update_id"`
-	Message   Message `json:"message"`
+	Update_id	int		`json:"update_id"`
+	Message		Message	`json:"message"`
+	Inline		Inline 	`json:"inline_query"`
 }
 
 type Message struct {
-	Message_id int    `json:"message_id"`
-	From       From   `json:"from"`
-	Chat       Chat   `json:"chat"`
-	Text       string `json:"text"`
+	Message_id	int    `json:"message_id"`
+	From		User   `json:"from"`
+	Chat		Chat   `json:"chat"`
+	Text		string `json:"text"`
 }
 
-type From struct {
+type Inline struct {
+	Id			string	`json:"id"`
+	From		User	`json:"from"`
+	Text		string	`json:"query"`
+}
+
+type User struct {
 	Id       int
 	Username string
 }

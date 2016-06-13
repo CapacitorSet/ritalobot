@@ -11,12 +11,9 @@ type Markov struct {
 	length int
 }
 
-func (m Markov) StoreUpdates(updates []Result, connection redis.Conn) {
-	for _, update := range updates {
-		message := update.Message.Text
-		if message != "" && !strings.HasPrefix(message, "/") && len(message) < 300 {
-			m.Store(update.Message.Text, connection)
-		}
+func (m Markov) StoreUpdate(message string, connection redis.Conn) {
+	if message != "" && !strings.HasPrefix(message, "/") && len(message) < 300 {
+		m.Store(message, connection)
 	}
 }
 

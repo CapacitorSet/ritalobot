@@ -39,17 +39,17 @@ func sendCommand(method, token string, params url.Values) ([]byte, error) {
 	return json, nil
 }
 
-func (bot *Bot) Commands(input string, chat int, author string) {
+func (bot *Bot) Commands(input string, author string) string {
 	markov := Markov{20}
 	word := strings.Split(input, " ")
 
 	commandParts := strings.Split(word[0], "@")
-	var command = commandParts[0]
+	command := commandParts[0]
 
 	if len(commandParts) > 1 {
-		var botName = commandParts[1]
+		botName := commandParts[1]
 		if (botName != name) { // Bail out if the command was directed at another bot
-			return
+			return ""
 		}
 	}
 
@@ -61,21 +61,20 @@ func (bot *Bot) Commands(input string, chat int, author string) {
 			seed = strings.Join(word[1:], " ") // Removes the initial command
 		}
 		text := markov.Generate(seed, bot.Connection)
-		bot.Say(text, chat)
+		return text
 	} else if word[0] == "/chorate" && len(word) >= 2 && author == admin {
 		n, err := strconv.Atoi(word[1])
 		if err != nil || n < 0 || n > 100 {
-			bot.Say("Use a number between 0 and 100.", chat)
+			return "Use a number between 0 and 100."
 		} else {
 			bot.Chance = n
 			log.Printf("Bot rate: %v\n", bot.Chance)
-			bot.Say("Rate set", chat)
+			return "Rate set"
 		}
 	} else if command == "/chosource" {
-		text := fmt.Sprintf("Author: %v \nSource: %v",
-			"@blackdev1l",
-			"https://github.com/blackdev1l/ritalobot")
-		bot.Say(text, chat)
+		return "Source: https://github.com/CapacitorSet/ritalobot"
+	} else {
+		return ""
 	}
 }
 
@@ -117,35 +116,6 @@ func (bot Bot) GetUpdates() []Result {
 	return updates
 }
 
-func (bot Bot) Say(text string, chat int) (bool, error) {
-
-	if strings.HasPrefix(text, "!kickme") || strings.HasPrefix(text, "/AttivaTelegramPremium") {
-		return true, nil
-	}
-
-	var responseReceived struct {
-		Ok          bool
-		Description string
-	}
-
-	params := url.Values{}
-
-	params.Set("chat_id", strconv.Itoa(chat))
-	params.Set("text", text)
-	resp, err := sendCommand("sendMessage", token, params)
-
-	err = json.Unmarshal(resp, &responseReceived)
-	if err != nil {
-		return false, err
-	}
-
-	if !responseReceived.Ok {
-		return false, fmt.Errorf("chobot: %s\n", responseReceived.Description)
-	}
-
-	return responseReceived.Ok, nil
-}
-
 func (bot Bot) Listen() {
 	var err error
 
@@ -178,38 +148,100 @@ func (bot Bot) Poll() {
 		updates := bot.GetUpdates()
 
 		if updates != nil {
-			markov.StoreUpdates(updates, bot.Connection)
 			for _, update := range updates {
-				if processable(update.Message, bot.Chance) {
+				text := fetchText(update)
+				author := fetchAuthor(update)
+				markov.StoreUpdate(text, bot.Connection)
+				response := process(text, isInline(update), author, markov, bot)
+
+				if response == "" { return }
+				if update.Message.Text != "" {
 					limiter.Wait()
-					process(update.Message, markov, bot)
+					bot.Say(response, update.Message.Chat.Id)
+				} else {
+					bot.SayInline(response, update.Inline.Id)
 				}
 			}
 		}
 	}
 }
 
-func process(message Message, markov Markov, bot Bot) {
-	if strings.HasPrefix(message.Text, "/cho") {
-		bot.Commands(
-			message.Text,
-			message.Chat.Id,
-			message.From.Username)
-	} else if rand.Intn(100) <= bot.Chance {
-		seed, _ := redis.String(bot.Connection.Do("RANDOMKEY"))
+func isInline(item Result) bool {
+	return item.Message.Text == ""
+}
 
-		chat := message.Chat.Id
-		out_text := markov.Generate(seed, bot.Connection)
-		bot.Say(out_text, chat)
+func fetchText(item Result) string {
+	if isInline(item) {
+		return item.Inline.Text
+	} else {
+		return item.Message.Text
 	}
 }
 
-func processable(message Message, chance int) bool {
-	if strings.HasPrefix(message.Text, "/cho") {
-		return true;
+func fetchAuthor(item Result) User {
+	if isInline(item) {
+		return item.Inline.From
+	} else {
+		return item.Message.From
 	}
-	if chance > 0 && rand.Intn(100) <= chance {
-		return true;
+}
+
+func process(text string, inline bool, author User, markov Markov, bot Bot) string {
+	if strings.HasPrefix(text, "/cho") {
+		return bot.Commands(text, author.Username)
+	} else if rand.Intn(100) <= bot.Chance {
+		var seed string
+		if (inline) {
+			seed = text
+		} else {
+			seed, _ = redis.String(bot.Connection.Do("RANDOMKEY"))
+		}
+
+		return markov.Generate(seed, bot.Connection)
+	} else {
+		return ""
 	}
-	return false;
+}
+
+func (bot Bot) Say(text string, chat int) (bool, error) {
+	if strings.HasPrefix(text, "!kickme") || strings.HasPrefix(text, "/AttivaTelegramPremium") {
+		return true, nil
+	}
+
+	var responseReceived struct {
+		Ok          bool
+		Description string
+	}
+
+	params := url.Values{}
+
+	params.Set("chat_id", strconv.Itoa(chat))
+	params.Set("text", text)
+	resp, err := sendCommand("sendMessage", token, params)
+
+	err = json.Unmarshal(resp, &responseReceived)
+	if err != nil {
+		return false, err
+	}
+
+	if !responseReceived.Ok {
+		return false, fmt.Errorf("chobot: %s\n", responseReceived.Description)
+	}
+
+	return responseReceived.Ok, nil
+}
+
+func (bot Bot) SayInline(text string, id string) {
+	text_params, _ := json.Marshal(map[string]string{
+		"type": "article",
+		"id": "a",
+		"title": text,
+		"message_text": text})
+
+	params := url.Values{}
+	params.Set("inline_query_id", id)
+	params.Set("results", fmt.Sprintf("[%s]", string(text_params)))
+	params.Set("cache_time", "0")
+
+	sendCommand("answerInlineQuery", token, params)
 }
