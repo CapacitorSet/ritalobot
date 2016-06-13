@@ -17,6 +17,7 @@ var (
 	connection	string
 	configPath	string
 	chance		int
+	admin		string
 )
 
 type Config struct {
@@ -25,6 +26,7 @@ type Config struct {
 	Connection	string	`yaml:"connection"`
 	Name		string	`yaml:"name"`
 	Port		int		`yaml:"port"`
+	Admin		string	`yaml:"admin"`
 }
 
 func printLogo() {
@@ -55,6 +57,7 @@ func readConfig(configPath string) int {
 	connection = c.Connection
 	port = c.Port
 	name = c.Name
+	admin = c.Admin
 	return 0
 }
 

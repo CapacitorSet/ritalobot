@@ -38,11 +38,9 @@ func sendCommand(method, token string, params url.Values) ([]byte, error) {
 	return json, nil
 }
 
-func (bot *Bot) Commands(input string, chat int) {
+func (bot *Bot) Commands(input string, chat int, author string) {
 	markov := Markov{20}
 	word := strings.Split(input, " ")
-
-	seed := strings.Join(word[1:], " ") // Removes the initial command
 
 	commandParts := strings.Split(word[0], "@")
 	var command = commandParts[0]
@@ -54,13 +52,19 @@ func (bot *Bot) Commands(input string, chat int) {
 		}
 	}
 
-	if command == "/chobot" && len(word) >= 2 {
+	if command == "/chobotta" {
+		var seed string
+		if (len(word) == 1) {
+			seed, _ = redis.String(bot.Connection.Do("RANDOMKEY"))
+		} else {
+			seed = strings.Join(word[1:], " ") // Removes the initial command
+		}
 		text := markov.Generate(seed, bot.Connection)
 		bot.Say(text, chat)
-	} else if word[0] == "/chorate" && len(word) >= 2 {
+	} else if word[0] == "/chorate" && len(word) >= 2 && author == admin {
 		n, err := strconv.Atoi(word[1])
-		if err != nil || n <= 0 || n > 100 {
-			bot.Say("Use a number between 1 and 100.", chat)
+		if err != nil || n < 0 || n > 100 {
+			bot.Say("Use a number between 0 and 100.", chat)
 		} else {
 			bot.Chance = n
 			log.Printf("Bot rate: %v\n", bot.Chance)
@@ -114,6 +118,13 @@ func (bot Bot) GetUpdates() []Result {
 
 func (bot Bot) Say(text string, chat int) (bool, error) {
 
+	if (strings.HasPrefix(text, "!kickme")) {
+		return true, nil
+	}
+	if (strings.HasPrefix(text, "/AttivaTelegramPremium")) {
+		return true, nil
+	}
+
 	var responseRecieved struct {
 		Ok          bool
 		Description string
@@ -163,8 +174,10 @@ func (bot Bot) Poll() {
 		if updates != nil {
 			markov.StoreUpdates(updates, bot.Connection)
 			if strings.HasPrefix(updates[0].Message.Text, "/cho") {
-				bot.Commands(updates[0].Message.Text,
-					updates[0].Message.Chat.Id)
+				bot.Commands(
+					updates[0].Message.Text,
+					updates[0].Message.Chat.Id,
+					updates[0].Message.From.Username)
 
 			} else if rand.Intn(100) <= bot.Chance {
 				seed, _ := redis.String(bot.Connection.Do("RANDOMKEY"))

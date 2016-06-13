@@ -3,3 +3,4 @@ connection: tcp
 chance: 20
 port: 6379
 name: ritalobot
+author: CapacitorSet
