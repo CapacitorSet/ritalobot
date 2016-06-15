@@ -151,9 +151,17 @@ func (bot Bot) Poll() {
 				text := fetchText(update)
 				author := fetchAuthor(update)
 				markov.StoreUpdate(text, bot.Connection)
-				response := process(text, isInline(update), author, markov, bot)
 
-				if response != "" {
+				i := 0
+				var response string
+				log.Println(text)
+				for i == 0 || (strings.Trim(response, " \t") == strings.Trim(text, " \t") && i < 5) {
+					response = process(text, isInline(update), author, markov, bot)
+					i++
+				}
+
+				if response != "" && i != 5 {
+					log.Println("Done")
 					if update.Message.Text != "" {
 						limiter.Wait()
 						bot.Say(response, update.Message.Chat.Id)
