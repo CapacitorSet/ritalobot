@@ -15,6 +15,8 @@ import (
 	"time"
 )
 
+var rate int
+
 func sendCommand(method, token string, params url.Values) ([]byte, error) {
 	url := fmt.Sprintf("https://api.telegram.org/bot%s/%s?%s",
 		token, method, params.Encode())
@@ -66,8 +68,8 @@ func (bot *Bot) Commands(input string, author string) string {
 		if err != nil || n < 0 || n > 100 {
 			return "Use a number between 0 and 100."
 		} else {
-			bot.Chance = n
-			log.Printf("Bot rate: %v\n", bot.Chance)
+			rate = n
+			log.Printf("Bot rate: %v\n", rate)
 			return "Rate set"
 		}
 	} else if command == "/chosource" {
@@ -119,7 +121,7 @@ func (bot Bot) Listen() {
 	var err error
 
 	rand.Seed(time.Now().UnixNano())
-	bot.Chance = chance
+	rate = chance
 
 	tmp := ":" + strconv.Itoa(port)
 	bot.Connection, err = redis.Dial(connection, tmp)
@@ -128,7 +130,7 @@ func (bot Bot) Listen() {
 		log.Fatal(err)
 	}
 	fmt.Printf("redis connection: %v | port is %v\n", connection, port)
-	fmt.Printf("chance rate %v%!\n", bot.Chance)
+	fmt.Printf("chance rate %v%!\n", rate)
 
 	bot.Poll()
 
@@ -197,7 +199,7 @@ func fetchAuthor(item Result) User {
 func process(text string, inline bool, author User, markov Markov, bot Bot) string {
 	if strings.HasPrefix(text, "/cho") {
 		return bot.Commands(text, author.Username)
-	} else if inline || (rand.Intn(100) <= bot.Chance) {
+	} else if inline || (rand.Intn(100) <= rate && rate != 0) {
 		var seed string
 		if (inline) {
 			seed = text
